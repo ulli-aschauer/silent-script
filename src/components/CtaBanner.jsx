@@ -15,7 +15,7 @@ const CtaBanner = () => {
             {de ? 'Jetzt unverbindliches Angebot anfordern.' : 'Request a non-binding quote now.'}
           </h3>
           <p className="mt-3 text-[#F7F3ED]/60 max-w-xl">
-            {de ? 'Vier Felder. 24 Stunden. Ein individuelles Angebot.' : 'Four fields. 24 hours. A personal offer.'}
+            {de ? 'Wenige Angaben. 24 Stunden. Ein individuelles Angebot.' : 'A few details. 24 hours. A personal offer.'}
           </p>
         </div>
         <div className="md:col-span-4 md:text-right">

@@ -1,227 +1,278 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { Lock, LogOut, Trash2, Plus, RefreshCw, FileText, Users as UsersIcon, Briefcase, Mail } from 'lucide-react';
-import { DEMO, DEMO_TEXT, url } from '../config';
+import { Lock, Trash2, FileText, Users as UsersIcon, Mail, Copy, Send, CheckCircle2, Ban, RotateCcw } from 'lucide-react';
+import { DEMO, DEMO_TEXT } from '../config';
+import {
+  PortalHeader, FieldChips, Meta, Badge, APP_STATUS, ORDER_STATUS, Empty, ErrorText,
+  inputCls, btnDark, btnLight, card, kicker, fmtDateTime, fullName,
+} from '../portal/ui';
+import { fieldLabel, workTypeLabel } from '../data/fields';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const TOKEN_KEY = 'ss_admin_token';
-
-const api = (token) => axios.create({ baseURL: API, headers: { Authorization: `Bearer ${token}` } });
+const err = (e) => e?.response?.data?.detail || 'Fehler';
 
 const Login = ({ onLogin }) => {
   const [pw, setPw] = useState('');
-  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
-    if (DEMO) { setErr(DEMO_TEXT); return; }
-    setBusy(true); setErr('');
+    if (DEMO) { setMsg(DEMO_TEXT); return; }
+    setBusy(true); setMsg('');
     try {
       const { data } = await axios.post(`${API}/auth/admin/login`, { password: pw });
       localStorage.setItem(TOKEN_KEY, data.token);
       onLogin(data.token);
-    } catch (e) { setErr('Falsches Passwort'); }
+    } catch { setMsg('Falsches Passwort'); }
     finally { setBusy(false); }
   };
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F7F3ED] px-6">
-      <form onSubmit={submit} className="w-full max-w-sm bg-[#F0EAE0] p-10 rounded-sm border border-[#14110F]/10">
+      <form onSubmit={submit} className={`${card} w-full max-w-sm p-10`}>
         <Lock className="w-6 h-6 text-[#C1613E] mb-4" />
         <h1 className="font-serif text-3xl text-[#14110F] mb-2">Admin Login</h1>
         <p className="text-sm text-[#14110F]/60 mb-6">Silent Script Dashboard</p>
-        <input autoFocus type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Passwort" className="w-full bg-transparent border-b border-[#14110F]/25 py-3 mb-6 focus:outline-none focus:border-[#C1613E]" />
-        {err && <div className="text-sm text-red-700 mb-4">{err}</div>}
-        <button disabled={busy} className="w-full bg-[#14110F] text-[#F7F3ED] py-3 rounded-full text-sm hover:bg-[#C1613E] transition-colors disabled:opacity-60">{busy ? 'Anmelden ...' : 'Anmelden'}</button>
+        <input autoFocus type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Passwort" className={`${inputCls} mb-6`} />
+        <div className="mb-4"><ErrorText>{msg}</ErrorText></div>
+        <button disabled={busy} className={`${btnDark} w-full`}>{busy ? 'Anmelden …' : 'Anmelden'}</button>
       </form>
     </div>
   );
 };
 
-const Table = ({ cols, rows, empty }) => (
-  <div className="overflow-x-auto border border-[#14110F]/10 rounded-sm">
-    <table className="w-full text-sm">
-      <thead className="bg-[#F0EAE0]">
-        <tr>{cols.map((c) => <th key={c} className="text-left px-4 py-3 font-medium text-[#14110F]/70 uppercase text-[10px] tracking-widest">{c}</th>)}</tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
-          <tr><td colSpan={cols.length} className="text-center py-10 text-[#14110F]/50">{empty}</td></tr>
-        ) : rows}
-      </tbody>
-    </table>
-  </div>
-);
+const CopyLink = ({ href }) => {
+  const [done, setDone] = useState(false);
+  const full = href.startsWith('http') ? href : window.location.origin + href;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-[#14110F]/50">Link für den Kunden:</span>
+      <a href={full} target="_blank" rel="noreferrer" className="font-mono text-[#C1613E] underline break-all">{full}</a>
+      <button type="button" onClick={() => { navigator.clipboard?.writeText(full); setDone(true); setTimeout(() => setDone(false), 2000); }}
+        className="inline-flex items-center gap-1 text-[#14110F]/60 hover:text-[#C1613E]"><Copy className="w-3.5 h-3.5" />{done ? 'Kopiert' : 'Kopieren'}</button>
+    </div>
+  );
+};
 
-const fmt = (d) => d ? new Date(d).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '';
+// ---------------------------------------------------------------------
+
+const OrderCard = ({ o, c, reload }) => {
+  const [fee, setFee] = useState(o.fee || '');
+  const [feeFinal, setFeeFinal] = useState('');
+  const [msg, setMsg] = useState('');
+  useEffect(() => setFee(o.fee || ''), [o.fee]);
+
+  const run = async (fn) => {
+    setMsg('');
+    try { await fn(); await reload(); } catch (e) { setMsg(err(e)); }
+  };
+  const patch = (body) => run(() => c.patch(`/admin/orders/${o.id}`, body));
+  const apps = o.applications;
+  const openApps = apps.filter((a) => a.status === 'applied');
+
+  return (
+    <article className={`${card} p-6`}>
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+        <div>
+          <div className={`${kicker} text-[#C1613E]`}>{fieldLabel(o.field)} · {workTypeLabel(o.work_type)}</div>
+          <div className="font-serif text-2xl text-[#14110F] mt-1">{o.topic}</div>
+          <div className="text-xs text-[#14110F]/50 mt-1"><span className="font-mono">{o.code}</span> · eingegangen {fmtDateTime(o.created_at)}</div>
+        </div>
+        <Badge status={o.status} map={ORDER_STATUS} />
+      </div>
+
+      <div className="grid md:grid-cols-5 gap-4 mb-4">
+        <Meta label="Kunde">{o.name}</Meta>
+        <Meta label="E-Mail"><a className="text-[#C1613E]" href={`mailto:${o.email}`}>{o.email}</a></Meta>
+        <Meta label="Umfang">{o.pages} Seiten</Meta>
+        <Meta label="Frist">{o.deadline}</Meta>
+        <Meta label="Autor:in">{o.author ? `${o.author.display_name} (${o.author.alias})` : ''}</Meta>
+      </div>
+      {o.message && <p className="text-sm text-[#14110F]/70 italic mb-4">„{o.message}“</p>}
+
+      <div className="flex flex-wrap items-end gap-3 mb-2">
+        <label className="w-44"><span className={`${kicker} text-[#14110F]/50`}>Honorar Autor:in</span>
+          <input value={fee} onChange={(e) => setFee(e.target.value)} placeholder="z.B. 1.200 €" className={inputCls} /></label>
+        {fee !== (o.fee || '') && <button onClick={() => patch({ fee })} className={btnLight}>Speichern</button>}
+        {o.status === 'in_progress' && (
+          <>
+            <label className="w-44 ml-auto"><span className={`${kicker} text-[#14110F]/50`}>Endhonorar (optional)</span>
+              <input value={feeFinal} onChange={(e) => setFeeFinal(e.target.value)} placeholder={o.fee || ''} className={inputCls} /></label>
+            <button onClick={() => patch({ status: 'completed', fee_final: feeFinal })} className={btnDark}><CheckCircle2 className="w-4 h-4" /> Als abgeschlossen markieren</button>
+          </>
+        )}
+      </div>
+      <ErrorText>{msg}</ErrorText>
+
+      <div className="mt-5 pt-5 border-t border-[#14110F]/10">
+        <div className={`${kicker} text-[#14110F]/50 mb-3`}>Bewerbungen ({apps.length}){o.status === 'open' && openApps.length > 0 ? ' – wählen Sie eine Person, die dem Kunden vorgestellt wird' : ''}</div>
+        {apps.length === 0 && <p className="text-sm text-[#14110F]/50">Noch keine Bewerbungen.</p>}
+        <div className="space-y-3">
+          {apps.map((a) => (
+            <div key={a.id} className="p-4 bg-[#F7F3ED] rounded-sm border border-[#14110F]/10">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-serif text-lg text-[#14110F]">{a.author ? fullName(a.author) : 'Gelöschtes Konto'} <span className="font-mono text-xs text-[#14110F]/50">{a.author?.alias}</span></div>
+                  <div className="text-sm text-[#14110F]/65">{a.author?.qualification}{a.author?.affiliations ? ` · lehrt/prüft an: ${a.author.affiliations}` : ''}</div>
+                  {a.note && <p className="text-sm text-[#14110F]/75 italic mt-1">„{a.note}“</p>}
+                </div>
+                <Badge status={a.status} map={APP_STATUS} />
+              </div>
+              {a.status === 'meeting' && (
+                <div className="text-xs text-[#14110F]/60 mt-2">
+                  Entscheidung Autor:in: <strong>{a.author_decision ? (a.author_decision === 'yes' ? 'Ja' : 'Nein') : 'offen'}</strong> · Kunde: <strong>{a.customer_decision ? (a.customer_decision === 'yes' ? 'Ja' : 'Nein') : 'offen'}</strong>
+                </div>
+              )}
+              {a.status === 'applied' && o.status === 'open' && (
+                <button onClick={() => run(() => c.post(`/admin/applications/${a.id}/propose`))} className={`${btnDark} mt-3`}><Send className="w-4 h-4" /> Dem Kunden vorstellen</button>
+              )}
+              {['proposed', 'meeting'].includes(a.status) && a.confirm_url && <div className="mt-3"><CopyLink href={a.confirm_url} /></div>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-4 text-sm">
+        {['open', 'proposed', 'meeting', 'in_progress'].includes(o.status) && (
+          <button onClick={() => window.confirm('Auftrag stornieren?') && patch({ status: 'cancelled' })} className="text-[#14110F]/50 hover:text-red-700 inline-flex items-center gap-1"><Ban className="w-4 h-4" /> Stornieren</button>
+        )}
+        {o.status === 'cancelled' && (
+          <button onClick={() => patch({ status: 'open' })} className="text-[#14110F]/50 hover:text-[#C1613E] inline-flex items-center gap-1"><RotateCcw className="w-4 h-4" /> Wieder öffnen</button>
+        )}
+        <button onClick={() => window.confirm('Auftrag endgültig löschen?') && run(() => c.delete(`/admin/orders/${o.id}`))} className="text-[#14110F]/50 hover:text-red-700 inline-flex items-center gap-1"><Trash2 className="w-4 h-4" /> Löschen</button>
+      </div>
+    </article>
+  );
+};
+
+const AUTHOR_STATUS = {
+  pending: { label: 'Wartet auf Freischaltung', tone: 'accent' },
+  active: { label: 'Aktiv', tone: 'green' },
+  blocked: { label: 'Gesperrt', tone: 'muted' },
+};
+
+const AuthorCard = ({ a, c, reload }) => {
+  const [msg, setMsg] = useState('');
+  const run = async (fn) => { setMsg(''); try { await fn(); await reload(); } catch (e) { setMsg(err(e)); } };
+  const setStatus = (status) => run(() => c.patch(`/admin/authors/${a.id}`, { status }));
+  return (
+    <article className={`${card} p-6`}>
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div>
+          <div className="font-serif text-xl text-[#14110F]">{fullName(a)} <span className="font-mono text-xs text-[#14110F]/50">{a.alias}</span></div>
+          <a href={`mailto:${a.email}`} className="text-sm text-[#C1613E]">{a.email}</a>
+        </div>
+        <div className="flex flex-col items-end gap-1.5">
+          <Badge status={a.status} map={AUTHOR_STATUS} />
+          <span className="text-xs text-[#14110F]/50">{a.available ? '● verfügbar' : '○ nicht verfügbar'}{!a.available && a.notify_when_unavailable ? ' · will informiert werden' : ''}</span>
+        </div>
+      </div>
+      <div className="grid md:grid-cols-2 gap-4 mb-3">
+        <Meta label="Qualifikation">{a.qualification}</Meta>
+        <Meta label="Lehrt / prüft an">{a.affiliations}</Meta>
+        <Meta label="Schwerpunkte">{a.keywords}</Meta>
+        <Meta label="Registriert">{fmtDateTime(a.created_at)}</Meta>
+      </div>
+      {a.bio && <p className="text-sm text-[#14110F]/70 italic mb-3">„{a.bio}“</p>}
+      <FieldChips fields={a.fields} />
+      <ErrorText>{msg}</ErrorText>
+      <div className="mt-4 flex flex-wrap gap-3">
+        {a.status !== 'active' && <button onClick={() => setStatus('active')} className={btnDark}><CheckCircle2 className="w-4 h-4" /> Freischalten</button>}
+        {a.status === 'active' && <button onClick={() => setStatus('blocked')} className={btnLight}><Ban className="w-4 h-4" /> Sperren</button>}
+        <button onClick={() => window.confirm(`${a.display_name} endgültig löschen?`) && run(() => c.delete(`/admin/authors/${a.id}`))} className="text-sm text-[#14110F]/50 hover:text-red-700 inline-flex items-center gap-1"><Trash2 className="w-4 h-4" /> Löschen</button>
+      </div>
+    </article>
+  );
+};
+
+const ORDER_FILTERS = [
+  ['active', 'Aktiv', (o) => ['open', 'proposed', 'meeting', 'in_progress'].includes(o.status)],
+  ['completed', 'Abgeschlossen', (o) => o.status === 'completed'],
+  ['cancelled', 'Storniert', (o) => o.status === 'cancelled'],
+  ['all', 'Alle', () => true],
+];
 
 const Dashboard = ({ token, onLogout }) => {
-  const [tab, setTab] = useState('quotes');
-  const [quotes, setQuotes] = useState([]);
-  const [inquiries, setInquiries] = useState([]);
-  const [authors, setAuthors] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const c = api(token);
+  const c = useMemo(() => axios.create({ baseURL: API, headers: { Authorization: `Bearer ${token}` } }), [token]);
+  const [data, setData] = useState({ orders: [], authors: [], inquiries: [] });
+  const [tab, setTab] = useState('orders');
+  const [filter, setFilter] = useState('active');
 
   const load = useCallback(async () => {
-    try {
-      const [q, i, a, ag] = await Promise.all([c.get('/admin/quotes'), c.get('/admin/inquiries'), c.get('/admin/authors'), c.get('/admin/assignments')]);
-      setQuotes(q.data); setInquiries(i.data); setAuthors(a.data); setAssignments(ag.data);
-    } catch (e) { if (e?.response?.status === 401) onLogout(); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-  useEffect(() => { load(); }, [load]);
+    try { setData((await c.get('/admin/overview')).data); }
+    catch (e) { if (e?.response?.status === 401) onLogout(); }
+  }, [c, onLogout]);
+  useEffect(() => { load(); document.title = 'Admin — Silent Script'; }, [load]);
 
-  // Author create
-  const [lastCred, setLastCred] = useState(null);
-  const [na, setNa] = useState({ username: '', display_name: '', field: '', password: '' });
-  const createAuthor = async (e) => {
-    e.preventDefault();
-    try {
-      await c.post('/admin/authors', na);
-      setLastCred({ username: na.username, password: na.password, display_name: na.display_name });
-      setNa({ username: '', display_name: '', field: '', password: '' });
-      load();
-    }
-    catch (e) { alert(e?.response?.data?.detail || 'Fehler'); }
-  };
-  const delAuthor = async (id) => { if (window.confirm('Autor löschen?')) { await c.delete(`/admin/authors/${id}`); load(); } };
+  const pendingAuthors = data.authors.filter((a) => a.status === 'pending').length;
+  const shownOrders = data.orders.filter(ORDER_FILTERS.find((f) => f[0] === filter)[2]);
+  const authorsSorted = [...data.authors].sort((x, y) => (x.status === 'pending' ? -1 : 0) - (y.status === 'pending' ? -1 : 0));
 
-  // Assignment create
-  const [nAs, setNAs] = useState({ field: '', scope: '', deadline: '', fee: '', note: '', assigned_to: null });
-  const createAssignment = async (e) => {
-    e.preventDefault();
-    try { await c.post('/admin/assignments', nAs); setNAs({ field: '', scope: '', deadline: '', fee: '', note: '', assigned_to: null }); load(); }
-    catch (e) { alert(e?.response?.data?.detail || 'Fehler'); }
-  };
-  const delAssignment = async (id) => { if (window.confirm('Auftrag löschen?')) { await c.delete(`/admin/assignments/${id}`); load(); } };
-
-  const tabBtn = (id, label, count) => (
-    <button onClick={() => setTab(id)} className={`px-4 py-2 rounded-full text-sm transition-colors ${tab === id ? 'bg-[#14110F] text-[#F7F3ED]' : 'bg-transparent text-[#14110F] border border-[#14110F]/20 hover:border-[#14110F]'}`}>
-      {label} <span className="opacity-60">({count})</span>
+  const tabBtn = (id, label, count, Icon, highlight) => (
+    <button onClick={() => setTab(id)} className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm transition-colors ${tab === id ? 'bg-[#14110F] text-[#F7F3ED]' : 'text-[#14110F] border border-[#14110F]/20 hover:border-[#14110F]'}`}>
+      <Icon className="w-4 h-4" /> {label} <span className={highlight ? 'text-[#C1613E] font-medium' : 'opacity-60'}>({count})</span>
     </button>
   );
 
-  const inputCls = 'bg-transparent border-b border-[#14110F]/25 py-2 text-sm focus:outline-none focus:border-[#C1613E]';
-
   return (
     <div className="min-h-screen bg-[#F7F3ED]">
-      <header className="border-b border-[#14110F]/10 bg-[#F7F3ED] sticky top-0 z-10">
-        <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="font-serif text-2xl text-[#14110F]">Silent Script<span className="text-[#C1613E]">.</span></span>
-            <span className="text-xs uppercase tracking-widest text-[#14110F]/50">Admin</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={load} className="text-sm text-[#14110F]/70 hover:text-[#C1613E] flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Aktualisieren</button>
-            <button onClick={onLogout} className="text-sm text-[#14110F]/70 hover:text-[#C1613E] flex items-center gap-1.5"><LogOut className="w-4 h-4" /> Logout</button>
-          </div>
-        </div>
-      </header>
-
+      <PortalHeader area="Admin" onRefresh={load} onLogout={onLogout} />
       <div className="max-w-[1400px] mx-auto px-6 py-10">
         <div className="flex flex-wrap gap-2 mb-8">
-          {tabBtn('quotes', <span className="inline-flex items-center gap-1.5"><FileText className="w-4 h-4" /> Angebotsanfragen</span>, quotes.length)}
-          {tabBtn('inquiries', <span className="inline-flex items-center gap-1.5"><Mail className="w-4 h-4" /> Kontaktanfragen</span>, inquiries.length)}
-          {tabBtn('assignments', <span className="inline-flex items-center gap-1.5"><Briefcase className="w-4 h-4" /> Aufträge</span>, assignments.length)}
-          {tabBtn('authors', <span className="inline-flex items-center gap-1.5"><UsersIcon className="w-4 h-4" /> Autoren</span>, authors.length)}
+          {tabBtn('orders', 'Aufträge', data.orders.filter(ORDER_FILTERS[0][2]).length, FileText)}
+          {tabBtn('authors', pendingAuthors ? `Autor:innen · ${pendingAuthors} neu` : 'Autor:innen', data.authors.length, UsersIcon, pendingAuthors > 0)}
+          {tabBtn('inquiries', 'Kontaktanfragen', data.inquiries.length, Mail)}
         </div>
 
-        {tab === 'quotes' && (
-          <Table cols={['Datum', 'Name', 'E-Mail', 'Fachbereich', 'Seiten', 'Frist', 'Details', 'Sprache']} empty="Noch keine Anfragen" rows={quotes.map((q) => (
-            <tr key={q.id} className="border-t border-[#14110F]/10 hover:bg-[#F0EAE0]">
-              <td className="px-4 py-3 text-[#14110F]/60 whitespace-nowrap">{fmt(q.created_at)}</td>
-              <td className="px-4 py-3 font-medium">{q.name}</td>
-              <td className="px-4 py-3"><a className="text-[#C1613E] hover:underline" href={`mailto:${q.email}`}>{q.email}</a></td>
-              <td className="px-4 py-3">{q.field}</td>
-              <td className="px-4 py-3">{q.pages}</td>
-              <td className="px-4 py-3">{q.deadline}</td>
-              <td className="px-4 py-3 max-w-[280px] text-[#14110F]/70">{q.message || '—'}</td>
-              <td className="px-4 py-3 uppercase text-xs">{q.lang}</td>
-            </tr>
-          ))} />
-        )}
-
-        {tab === 'inquiries' && (
-          <Table cols={['Datum', 'Name', 'E-Mail', 'Betreff', 'Nachricht', 'Sprache']} empty="Keine Kontaktanfragen" rows={inquiries.map((q) => (
-            <tr key={q.id} className="border-t border-[#14110F]/10 hover:bg-[#F0EAE0]">
-              <td className="px-4 py-3 text-[#14110F]/60 whitespace-nowrap">{fmt(q.created_at)}</td>
-              <td className="px-4 py-3 font-medium">{q.name}</td>
-              <td className="px-4 py-3"><a className="text-[#C1613E] hover:underline" href={`mailto:${q.email}`}>{q.email}</a></td>
-              <td className="px-4 py-3">{q.subject}</td>
-              <td className="px-4 py-3 max-w-[360px] text-[#14110F]/70">{q.message}</td>
-              <td className="px-4 py-3 uppercase text-xs">{q.lang}</td>
-            </tr>
-          ))} />
-        )}
-
-        {tab === 'assignments' && (
-          <div className="space-y-6">
-            <form onSubmit={createAssignment} className="bg-[#F0EAE0] p-6 rounded-sm border border-[#14110F]/10">
-              <div className="font-serif text-xl mb-4">Neuen Auftrag anlegen</div>
-              <div className="grid md:grid-cols-6 gap-4">
-                <input required value={nAs.field} onChange={(e) => setNAs({...nAs, field: e.target.value})} placeholder="Fachbereich" className={inputCls} />
-                <input required value={nAs.scope} onChange={(e) => setNAs({...nAs, scope: e.target.value})} placeholder="Umfang (z.B. 80 S.)" className={inputCls} />
-                <input required value={nAs.deadline} onChange={(e) => setNAs({...nAs, deadline: e.target.value})} placeholder="Frist" className={inputCls} />
-                <input required value={nAs.fee} onChange={(e) => setNAs({...nAs, fee: e.target.value})} placeholder="Honorar-Vorschlag" className={inputCls} />
-                <input value={nAs.note} onChange={(e) => setNAs({...nAs, note: e.target.value})} placeholder="Bemerkung" className={inputCls} />
-                <select value={nAs.assigned_to || ''} onChange={(e) => setNAs({...nAs, assigned_to: e.target.value || null})} className={inputCls}>
-                  <option value="">— Autor zuweisen (optional) —</option>
-                  {authors.map((a) => <option key={a.id} value={a.username}>{a.display_name} ({a.username})</option>)}
-                </select>
-              </div>
-              <button className="mt-4 inline-flex items-center gap-2 bg-[#14110F] text-[#F7F3ED] px-5 py-2 rounded-full text-sm hover:bg-[#C1613E] transition-colors"><Plus className="w-4 h-4" /> Auftrag anlegen</button>
-            </form>
-            <Table cols={['Datum', 'Fachbereich', 'Umfang', 'Frist', 'Honorar', 'Bemerkung', 'Status', 'Zugewiesen an', 'Übernommen von', '']} empty="Noch keine Aufträge" rows={assignments.map((a) => (
-              <tr key={a.id} className="border-t border-[#14110F]/10">
-                <td className="px-4 py-3 text-[#14110F]/60 whitespace-nowrap">{fmt(a.created_at)}</td>
-                <td className="px-4 py-3">{a.field}</td>
-                <td className="px-4 py-3">{a.scope}</td>
-                <td className="px-4 py-3">{a.deadline}</td>
-                <td className="px-4 py-3">{a.fee}</td>
-                <td className="px-4 py-3 max-w-[240px] text-[#14110F]/70">{a.note || '—'}</td>
-                <td className="px-4 py-3"><span className={`text-xs uppercase px-2 py-1 rounded-full ${a.status === 'open' ? 'bg-[#6B7A3E]/15 text-[#6B7A3E]' : a.status === 'taken' ? 'bg-[#C1613E]/15 text-[#C1613E]' : 'bg-[#14110F]/10 text-[#14110F]/60'}`}>{a.status}</span></td>
-                <td className="px-4 py-3">{a.assigned_to ? <span className="font-mono text-xs">{a.assigned_to}</span> : <span className="text-[#14110F]/40">—</span>}</td>
-                <td className="px-4 py-3">{a.taken_by ? <span className="font-mono text-xs">{a.taken_by}</span> : <span className="text-[#14110F]/40">—</span>}</td>
-                <td className="px-4 py-3"><button onClick={() => delAssignment(a.id)} className="text-[#14110F]/50 hover:text-red-700"><Trash2 className="w-4 h-4" /></button></td>
-              </tr>
-            ))} />
-          </div>
+        {tab === 'orders' && (
+          <>
+            <div className="flex flex-wrap gap-4 mb-6 text-sm">
+              {ORDER_FILTERS.map(([id, label, fn]) => (
+                <button key={id} onClick={() => setFilter(id)} className={filter === id ? 'text-[#C1613E] underline' : 'text-[#14110F]/60 hover:text-[#14110F]'}>
+                  {label} ({data.orders.filter(fn).length})
+                </button>
+              ))}
+            </div>
+            <p className="text-sm text-[#14110F]/55 mb-6 max-w-3xl">
+              Neue Anfragen werden automatisch veröffentlicht. Passende Autor:innen werden benachrichtigt und können sich bewerben.
+              Stellen Sie dem Kunden eine Person vor – er prüft das Profil auf Interessenkonflikte, bevor die Kontaktdaten freigegeben werden.
+            </p>
+            <div className="space-y-4">
+              {shownOrders.length === 0 ? <Empty>Keine Aufträge in dieser Ansicht.</Empty>
+                : shownOrders.map((o) => <OrderCard key={o.id} o={o} c={c} reload={load} />)}
+            </div>
+          </>
         )}
 
         {tab === 'authors' && (
-          <div className="space-y-6">
-            {lastCred && (
-              <div className="p-6 bg-[#6B7A3E]/10 border border-[#6B7A3E]/30 rounded-sm">
-                <div className="text-xs uppercase tracking-widest text-[#6B7A3E] mb-2">Zugang erstellt — bitte diese Daten sicher an den Autor weitergeben</div>
-                <div className="font-serif text-lg text-[#14110F] mb-3">{lastCred.display_name}</div>
-                <div className="grid md:grid-cols-3 gap-3 text-sm">
-                  <div><span className="text-[#14110F]/50">Login-URL:</span> <a className="text-[#C1613E] underline" href={url('/autoren')} target="_blank" rel="noreferrer">/autoren</a></div>
-                  <div><span className="text-[#14110F]/50">Username:</span> <span className="font-mono">{lastCred.username}</span></div>
-                  <div><span className="text-[#14110F]/50">Passwort:</span> <span className="font-mono">{lastCred.password}</span></div>
-                </div>
-                <button onClick={() => setLastCred(null)} className="mt-4 text-xs text-[#14110F]/60 hover:text-[#C1613E]">Ausblenden</button>
-              </div>
-            )}
-            <form onSubmit={createAuthor} className="bg-[#F0EAE0] p-6 rounded-sm border border-[#14110F]/10">
-              <div className="font-serif text-xl mb-4">Neuen Autor anlegen</div>
-              <div className="grid md:grid-cols-4 gap-4">
-                <input required value={na.username} onChange={(e) => setNa({...na, username: e.target.value})} placeholder="Username" className={inputCls} />
-                <input required value={na.display_name} onChange={(e) => setNa({...na, display_name: e.target.value})} placeholder="Anzeigename" className={inputCls} />
-                <input value={na.field} onChange={(e) => setNa({...na, field: e.target.value})} placeholder="Fachbereich" className={inputCls} />
-                <input required type="password" value={na.password} onChange={(e) => setNa({...na, password: e.target.value})} placeholder="Passwort" className={inputCls} />
-              </div>
-              <button className="mt-4 inline-flex items-center gap-2 bg-[#14110F] text-[#F7F3ED] px-5 py-2 rounded-full text-sm hover:bg-[#C1613E] transition-colors"><Plus className="w-4 h-4" /> Autor anlegen</button>
-            </form>
-            <Table cols={['Datum', 'Username', 'Name', 'Fachbereich', '']} empty="Noch keine Autoren" rows={authors.map((a) => (
-              <tr key={a.id} className="border-t border-[#14110F]/10">
-                <td className="px-4 py-3 text-[#14110F]/60 whitespace-nowrap">{fmt(a.created_at)}</td>
-                <td className="px-4 py-3 font-mono text-sm">{a.username}</td>
-                <td className="px-4 py-3">{a.display_name}</td>
-                <td className="px-4 py-3">{a.field || '—'}</td>
-                <td className="px-4 py-3"><button onClick={() => delAuthor(a.id)} className="text-[#14110F]/50 hover:text-red-700"><Trash2 className="w-4 h-4" /></button></td>
-              </tr>
-            ))} />
+          <div className="grid lg:grid-cols-2 gap-4">
+            {authorsSorted.length === 0 ? <Empty>Noch keine Registrierungen.</Empty>
+              : authorsSorted.map((a) => <AuthorCard key={a.id} a={a} c={c} reload={load} />)}
           </div>
+        )}
+
+        {tab === 'inquiries' && (
+          data.inquiries.length === 0 ? <Empty>Keine Kontaktanfragen.</Empty> : (
+            <div className="overflow-x-auto border border-[#14110F]/10 rounded-sm">
+              <table className="w-full text-sm">
+                <thead className="bg-[#F0EAE0]">
+                  <tr>{['Datum', 'Name', 'E-Mail', 'Betreff', 'Nachricht', ''].map((h) => <th key={h} className={`text-left px-4 py-3 font-medium text-[#14110F]/70 ${kicker}`}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {data.inquiries.map((q) => (
+                    <tr key={q.id} className="border-t border-[#14110F]/10 hover:bg-[#F0EAE0]">
+                      <td className="px-4 py-3 text-[#14110F]/60 whitespace-nowrap">{fmtDateTime(q.created_at)}</td>
+                      <td className="px-4 py-3 font-medium">{q.name}</td>
+                      <td className="px-4 py-3"><a className="text-[#C1613E] hover:underline" href={`mailto:${q.email}`}>{q.email}</a></td>
+                      <td className="px-4 py-3">{q.subject}</td>
+                      <td className="px-4 py-3 max-w-[420px] text-[#14110F]/70">{q.message}</td>
+                      <td className="px-4 py-3"><button onClick={async () => { if (window.confirm('Löschen?')) { await c.delete(`/admin/inquiries/${q.id}`); load(); } }} className="text-[#14110F]/50 hover:text-red-700"><Trash2 className="w-4 h-4" /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
       </div>
     </div>
@@ -230,8 +281,8 @@ const Dashboard = ({ token, onLogout }) => {
 
 const AdminPage = () => {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
-  const logout = () => { localStorage.removeItem(TOKEN_KEY); setToken(null); };
-  if (!token) return <Login onLogin={setToken} />;
+  const logout = useCallback(() => { localStorage.removeItem(TOKEN_KEY); setToken(null); }, []);
+  if (!token || DEMO) return <Login onLogin={setToken} />;
   return <Dashboard token={token} onLogout={logout} />;
 };
 

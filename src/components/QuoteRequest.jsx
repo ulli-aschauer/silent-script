@@ -4,13 +4,15 @@ import { useLang } from '../i18n/LanguageContext';
 import SectionKicker from './SectionKicker';
 import { Send, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 import { DEMO, DEMO_TEXT } from '../config';
+import { FIELDS, WORK_TYPES } from '../data/fields';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const QuoteRequest = ({ prefill }) => {
   const { t, lang } = useLang();
-  const [form, setForm] = useState({ name: '', email: '', field: '', pages: '', deadline: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', field: '', work_type: '', topic: '', pages: '', deadline: '', message: '' });
   const [state, setState] = useState('idle');
+  const [errMsg, setErrMsg] = useState('');
 
   React.useEffect(() => { if (prefill) setForm((f) => ({ ...f, field: prefill })); }, [prefill]);
 
@@ -18,10 +20,13 @@ const QuoteRequest = ({ prefill }) => {
   const L = {
     kicker: de ? 'Angebot|Unverbindlich. Individuell. In 24 h.' : 'Quote|Non-binding. Individual. In 24 h.',
     title: de ? 'Jetzt unverbindliches Angebot anfordern' : 'Request a non-binding quote',
-    lead: de ? 'Füllen Sie die vier Felder aus — wir melden uns innerhalb von 24 Stunden mit einem individuellen Angebot und dem passenden Fachautor.' : 'Fill in the four fields — we reply within 24 hours with an individual quote and the matching expert author.',
+    lead: de ? 'Wenige Angaben genügen — passende Fachautor:innen werden sofort informiert, und wir melden uns innerhalb von 24 Stunden mit einem individuellen Angebot.' : 'A few details are enough — matching expert authors are notified right away, and we reply within 24 hours with an individual quote.',
     name: de ? 'Ihr Name' : 'Your name',
     email: 'E-Mail',
-    field: de ? 'Fachbereich (z.B. Steuerrecht)' : 'Field (e.g. tax law)',
+    field: de ? 'Fachbereich wählen' : 'Choose field',
+    work_type: de ? 'Art der Arbeit' : 'Type of work',
+    topic: de ? 'Thema der Arbeit (z.B. KI im Mittelstand)' : 'Topic (e.g. AI in SMEs)',
+    privacy: de ? 'Thema und Details sehen passende Autor:innen anonym. Bitte keine Namen eintragen.' : 'Matching authors see topic and details anonymously. Please do not include names.',
     pages: de ? 'Seitenzahl (ca.)' : 'Pages (approx.)',
     deadline: de ? 'Abgabefrist (z.B. 15.11.2025)' : 'Deadline (e.g. 15/11/2025)',
     message: de ? 'Weitere Details (optional)' : 'Additional details (optional)',
@@ -37,19 +42,22 @@ const QuoteRequest = ({ prefill }) => {
     if (DEMO) { setState('demo'); return; }
     setState('sending');
     try {
-      await axios.post(`${API}/quotes`, {
+      await axios.post(`${API}/orders`, {
         name: form.name,
         email: form.email,
         field: form.field,
+        work_type: form.work_type,
+        topic: form.topic,
         pages: Number(form.pages),
         deadline: form.deadline,
         message: form.message,
         lang
       });
       setState('ok');
-      setForm({ name: '', email: '', field: '', pages: '', deadline: '', message: '' });
+      setForm({ name: '', email: '', field: '', work_type: '', topic: '', pages: '', deadline: '', message: '' });
     } catch (err) {
       console.error(err);
+      setErrMsg(err?.response?.data?.detail || '');
       setState('err');
       setTimeout(() => setState('idle'), 5000);
     }
@@ -84,18 +92,29 @@ const QuoteRequest = ({ prefill }) => {
                   <input required value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder={L.name} className={cls} />
                   <input required type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} placeholder={L.email} className={cls} />
                 </div>
-                <input required value={form.field} onChange={(e) => setForm({...form, field: e.target.value})} placeholder={L.field} className={cls} />
+                <div className="grid md:grid-cols-2 gap-6">
+                  <select required value={form.field} onChange={(e) => setForm({...form, field: e.target.value})} className={cls + (form.field ? '' : ' text-[#14110F]/40')}>
+                    <option value="" disabled>{L.field}</option>
+                    {FIELDS.map((f) => <option key={f.key} value={f.key} className="text-[#14110F]">{f[lang]}</option>)}
+                  </select>
+                  <select required value={form.work_type} onChange={(e) => setForm({...form, work_type: e.target.value})} className={cls + (form.work_type ? '' : ' text-[#14110F]/40')}>
+                    <option value="" disabled>{L.work_type}</option>
+                    {WORK_TYPES.map((w) => <option key={w.key} value={w.key} className="text-[#14110F]">{w[lang]}</option>)}
+                  </select>
+                </div>
+                <input required value={form.topic} onChange={(e) => setForm({...form, topic: e.target.value})} placeholder={L.topic} className={cls} />
                 <div className="grid md:grid-cols-2 gap-6">
                   <input required type="number" min="1" max="2000" value={form.pages} onChange={(e) => setForm({...form, pages: e.target.value})} placeholder={L.pages} className={cls} />
                   <input required value={form.deadline} onChange={(e) => setForm({...form, deadline: e.target.value})} placeholder={L.deadline} className={cls} />
                 </div>
                 <textarea rows={4} value={form.message} onChange={(e) => setForm({...form, message: e.target.value})} placeholder={L.message} className={cls + ' resize-none'} />
+                <p className="text-xs text-[#14110F]/50">{L.privacy}</p>
                 <div className="flex items-center justify-between flex-wrap gap-4 pt-2">
                   <button type="submit" disabled={state === 'sending'} className="group inline-flex items-center gap-3 bg-[#14110F] text-[#F7F3ED] px-8 py-4 rounded-full text-sm tracking-wide hover:bg-[#C1613E] transition-colors disabled:opacity-60">
                     {state === 'sending' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                     {state === 'sending' ? L.sending : L.send}
                   </button>
-                  {state === 'err' && <div className="text-sm text-red-700">{L.err}</div>}
+                  {state === 'err' && <div className="text-sm text-red-700">{errMsg || L.err}</div>}
                   {state === 'demo' && <div className="text-sm text-[#C1613E] max-w-sm">{DEMO_TEXT}</div>}
                 </div>
               </form>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLang } from '../i18n/LanguageContext';
 import { Menu, X, Languages } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { url } from '../config';
 import ghostLogo from '../assets/brand/ghost-dark.png';
 
@@ -8,6 +9,9 @@ const Navbar = () => {
   const { t, toggle, lang } = useLang();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const onHome = pathname === '/';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -20,26 +24,31 @@ const Navbar = () => {
     { href: '#services', label: t.nav.services },
     { href: '#fachbereiche', label: t.nav.authors },
     { href: '#process', label: t.nav.process },
-    { href: '#contact', label: t.nav.contact }
+    { to: '/kontakt', label: t.nav.contact }
   ];
 
-  const scrollTo = (e, href) => {
+  // Abschnitte der Startseite: dort scrollen, von Unterseiten aus zur Startseite springen.
+  // Eigene Seiten (z.B. Kontakt): normal navigieren.
+  const hrefOf = (l) => (l.to ? url(l.to) : onHome ? l.href : url('/') + l.href);
+  const go = (e, l) => {
     e.preventDefault();
     setOpen(false);
-    const el = document.querySelector(href);
+    if (l.to) { navigate(l.to); return; }
+    if (!onHome) { navigate('/' + l.href); return; }
+    const el = document.querySelector(l.href);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-500 ${scrolled ? 'bg-[#F7F3ED]/95 backdrop-blur border-b border-[#1A1A1A]/10' : 'bg-transparent'}`}>
       <div className="max-w-[1400px] mx-auto px-6 md:px-12 h-20 flex items-center justify-between">
-        <a href="#top" onClick={(e) => scrollTo(e, '#top')} className="flex items-center gap-2">
+        <a href={hrefOf({ href: '#top' })} onClick={(e) => go(e, { href: '#top' })} className="flex items-center gap-2">
           <img src={ghostLogo} alt="" aria-hidden="true" className="h-9" style={{ width: "auto" }} />
           <span className="font-serif text-2xl tracking-tight text-[#14110F]">Silent Script<span className="text-[#C1613E]">.</span></span>
         </a>
         <nav className="hidden lg:flex items-center gap-8">
           {links.map((l) => (
-            <a key={l.href} href={l.href} onClick={(e) => scrollTo(e, l.href)} className="text-sm text-[#14110F] hover:text-[#C1613E] transition-colors relative group">
+            <a key={l.label} href={hrefOf(l)} onClick={(e) => go(e, l)} className="text-sm text-[#14110F] hover:text-[#C1613E] transition-colors relative group">
               {l.label}
               <span className="absolute -bottom-1 left-0 w-0 h-px bg-[#C1613E] transition-all group-hover:w-full"></span>
             </a>
@@ -63,7 +72,7 @@ const Navbar = () => {
         <div className="lg:hidden bg-[#F7F3ED] border-t border-[#1A1A1A]/10">
           <div className="px-6 py-6 flex flex-col gap-4">
             {links.map((l) => (
-              <a key={l.href} href={l.href} onClick={(e) => scrollTo(e, l.href)} className="text-base text-[#14110F]">{l.label}</a>
+              <a key={l.label} href={hrefOf(l)} onClick={(e) => go(e, l)} className="text-base text-[#14110F]">{l.label}</a>
             ))}
             <a href={url('/autoren')} className="text-base text-[#C1613E] flex items-center gap-2 pt-4 border-t border-[#14110F]/10">
               <span className="w-1.5 h-1.5 rounded-full bg-[#6B7A3E]"></span>

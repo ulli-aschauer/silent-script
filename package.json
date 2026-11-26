@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "server": "node --watch server/index.js",
-    "build": "vite build",
+    "build": "node scripts/extra-css.mjs && vite build",
     "start": "node server/index.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "css:extra": "node scripts/extra-css.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.0.0",
@@ -22,6 +23,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.0",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^3.4.19",
     "vite": "^6.0.0"
   },
   "engines": {

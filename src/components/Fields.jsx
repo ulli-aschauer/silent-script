@@ -2,21 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useLang } from '../i18n/LanguageContext';
 import SectionKicker from './SectionKicker';
 import { Search, Scale, Briefcase, Cpu, Stethoscope, Brain, Users, BookOpen, Code, Microscope, GraduationCap, Landmark, Languages } from 'lucide-react';
+import { FIELDS as BASE_FIELDS } from '../data/fields';
 
-const FIELDS = [
-  { key: 'jura', de: 'Rechtswissenschaft', en: 'Law', icon: Scale, sub: { de: 'Zivil-, Straf-, Öff. Recht', en: 'Civil, criminal, public' } },
-  { key: 'wiwi', de: 'Wirtschaftswissenschaft', en: 'Business & Economics', icon: Briefcase, sub: { de: 'BWL, VWL, Finance', en: 'Management, Economics' } },
-  { key: 'mint', de: 'MINT / Ingenieur', en: 'STEM / Engineering', icon: Cpu, sub: { de: 'Maschinenbau, E-Technik', en: 'Mechanical, Electrical' } },
-  { key: 'medizin', de: 'Medizin', en: 'Medicine', icon: Stethoscope, sub: { de: 'Human-, Zahn-, Pharmazie', en: 'Clinical, Pharmacology' } },
-  { key: 'psycho', de: 'Psychologie', en: 'Psychology', icon: Brain, sub: { de: 'Klinisch, Sozial, Kognitiv', en: 'Clinical, social' } },
-  { key: 'soz', de: 'Sozialwissenschaft', en: 'Social Sciences', icon: Users, sub: { de: 'Soziologie, Politik', en: 'Sociology, Politics' } },
-  { key: 'geist', de: 'Geisteswissenschaft', en: 'Humanities', icon: BookOpen, sub: { de: 'Literatur, Philosophie', en: 'Literature, Philosophy' } },
-  { key: 'info', de: 'Informatik', en: 'Computer Science', icon: Code, sub: { de: 'Data Science, KI, SW', en: 'Data, AI, Software' } },
-  { key: 'natur', de: 'Naturwissenschaft', en: 'Natural Sciences', icon: Microscope, sub: { de: 'Bio, Chemie, Physik', en: 'Biology, Chemistry, Physics' } },
-  { key: 'paed', de: 'Pädagogik', en: 'Education', icon: GraduationCap, sub: { de: 'Schule, Erwachsenenbildung', en: 'Teaching, adult ed.' } },
-  { key: 'pol', de: 'Politik & Verwaltung', en: 'Politics & Public Admin', icon: Landmark, sub: { de: 'PolWiss, VerwWiss', en: 'Political science' } },
-  { key: 'ling', de: 'Sprach- & Kulturwiss.', en: 'Languages & Culture', icon: Languages, sub: { de: 'Anglistik, Romanistik', en: 'Linguistics, cultural studies' } }
-];
+const ICONS = { jura: Scale, wiwi: Briefcase, mint: Cpu, medizin: Stethoscope, psycho: Brain, soz: Users, geist: BookOpen, info: Code, natur: Microscope, paed: GraduationCap, pol: Landmark, ling: Languages };
+const FIELDS = BASE_FIELDS.map((f) => ({ ...f, icon: ICONS[f.key] }));
 
 const Fields = ({ onPick }) => {
   const { t, lang } = useLang();
@@ -61,7 +50,7 @@ const Fields = ({ onPick }) => {
             const label = lang === 'de' ? f.de : f.en;
             const sub = f.sub[lang];
             return (
-              <button key={f.key} onClick={() => pick(label)} className="group text-left p-6 rounded-sm bg-[#F0EAE0] border border-transparent hover:border-[#14110F] hover:bg-[#F7F3ED] transition-colors">
+              <button key={f.key} onClick={() => pick(f.key)} className="group text-left p-6 rounded-sm bg-[#F0EAE0] border border-transparent hover:border-[#14110F] hover:bg-[#F7F3ED] transition-colors">
                 <div className="w-11 h-11 rounded-full border border-[#14110F]/20 flex items-center justify-center mb-4 group-hover:bg-[#C1613E] group-hover:border-[#C1613E] group-hover:text-[#F7F3ED] transition-colors">
                   <Icon className="w-5 h-5" />
                 </div>

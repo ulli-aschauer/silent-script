@@ -6,13 +6,18 @@ import crypto from 'node:crypto';
 const DATA_DIR = process.env.DATA_DIR || path.resolve(import.meta.dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
-const empty = () => ({ quotes: [], inquiries: [], authors: [], assignments: [] });
+const COLLECTIONS = ['inquiries', 'orders', 'authors', 'applications'];
+const empty = () => ({ ...Object.fromEntries(COLLECTIONS.map((c) => [c, []])), meta: { orderSeq: 1000, authorSeq: 1000 } });
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let db = empty();
 if (fs.existsSync(DB_FILE)) {
-  db = { ...empty(), ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) };
+  const loaded = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  db = { ...empty(), ...loaded, meta: { ...empty().meta, ...(loaded.meta || {}) } };
+  // Alte Datenstruktur (vor dem Autorenportal) wird nicht weiterverwendet.
+  delete db.quotes; delete db.assignments;
+  for (const c of COLLECTIONS) if (!Array.isArray(db[c])) db[c] = [];
 }
 
 const save = () => {
@@ -22,13 +27,15 @@ const save = () => {
 };
 
 export const newId = () => crypto.randomUUID();
+export const newToken = () => crypto.randomBytes(24).toString('base64url');
 export const now = () => new Date().toISOString();
 
 const byNewest = (a, b) => (a.created_at < b.created_at ? 1 : -1);
 
 export const store = {
-  list: (coll) => [...db[coll]].sort(byNewest),
+  list: (coll, pred = () => true) => db[coll].filter(pred).sort(byNewest),
   find: (coll, pred) => db[coll].find(pred),
+  get: (coll, id) => db[coll].find((r) => r.id === id),
   insert: (coll, item) => {
     const row = { id: newId(), created_at: now(), ...item };
     db[coll].push(row);
@@ -38,7 +45,7 @@ export const store = {
   update: (coll, id, patch) => {
     const row = db[coll].find((r) => r.id === id);
     if (!row) return null;
-    Object.assign(row, patch);
+    Object.assign(row, patch, { updated_at: now() });
     save();
     return row;
   },
@@ -47,6 +54,12 @@ export const store = {
     db[coll] = db[coll].filter((r) => r.id !== id);
     if (db[coll].length !== before) save();
     return db[coll].length !== before;
+  },
+  // Fortlaufende Nummern, z.B. für Auftragsnummern (SS-1001) und Autorenkennung (A-1001)
+  nextSeq: (name) => {
+    db.meta[name] = (db.meta[name] || 1000) + 1;
+    save();
+    return db.meta[name];
   },
 };
 

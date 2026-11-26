@@ -57,7 +57,8 @@ export const requireAuthor = (req, res, next) => {
   if (!p || p.role !== 'author') return unauthorized(res);
   // Gelöschte Autor:innen verlieren sofort den Zugang.
   const author = store.find('authors', (a) => a.id === p.sub);
-  if (!author) return unauthorized(res);
+  // Gesperrte ebenso.
+  if (!author || author.status === 'blocked') return unauthorized(res);
   req.author = author;
   next();
 };

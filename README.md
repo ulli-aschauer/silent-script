@@ -30,6 +30,7 @@ Adresse: https://ulli-aschauer.github.io/silent-script/
 Bei jedem Push auf `main` baut GitHub die Seite im **Testmodus** und veröffentlicht sie
 (`.github/workflows/pages.yml`). Im Testmodus speichern Formulare und Logins nichts.
 Stattdessen erscheint: „Ist im Testzustand nicht sichtbar. Wird erst angezeigt, wenn die Seite Online ist.“
+Das Autorenportal und die Kundenbestätigung zeigen dort eine Testansicht mit Beispieldaten.
 
 Einmalig in GitHub einrichten: **Settings → Pages → Source: GitHub Actions**.
 
@@ -62,16 +63,40 @@ Am Code ändert sich nichts, die Seite funktioniert unter jeder Domain.
 
 ## Bereiche
 
-| Adresse    | Zweck                                                               |
-|------------|---------------------------------------------------------------------|
-| `/`        | Website mit Angebots- und Kontaktformular                           |
-| `/admin`   | Dashboard: Anfragen ansehen, Autor:innen und Aufträge verwalten     |
-| `/autoren` | Login für Autor:innen: offene Aufträge ansehen und übernehmen        |
+| Adresse                  | Zweck                                                                 |
+|--------------------------|-----------------------------------------------------------------------|
+| `/`                      | Website mit Angebotsformular                                          |
+| `/kontakt`               | Kontaktformular                                                       |
+| `/autoren`               | Autorenportal: Registrierung, passende Aufträge, Bewerbungen, Verdienst, Historie, Verfügbarkeit |
+| `/admin`                 | Team: Aufträge, Bewerbungen, Freischaltung der Autor:innen, Kontaktanfragen |
+| `/bestaetigung/<link>`   | Für Kund:innen: Autor:in prüfen und nach dem Erstgespräch entscheiden |
+
+## Ablauf eines Auftrags
+
+1. **Kunde stellt Anfrage** (Startseite). Sie wird sofort als offener Auftrag veröffentlicht.
+2. **Passende Autor:innen werden per E-Mail informiert**: gleicher Fachbereich, freigeschaltet, und
+   „verfügbar“ oder „trotzdem informieren“ eingeschaltet. Kundendaten sind dabei nicht sichtbar.
+3. **Autor:innen bewerben sich** im Portal.
+4. **Team stellt eine Person vor** (Admin → „Dem Kunden vorstellen“). Der Kunde erhält Name,
+   Qualifikation und Hochschulen der Person und prüft, ob z.B. ein:e Prüfer:in dabei ist.
+5. **Kunde bestätigt** → erst jetzt sieht die Autor:in Name und E-Mail des Kunden. Erstgespräch.
+6. **Beide entscheiden**: sagen beide zu, ist der Auftrag „in Arbeit“. Sagt eine Seite ab, ist er wieder offen.
+7. **Team schließt ab** → erscheint in Historie und Verdienst der Autor:in.
+
+Neue Registrierungen müssen im Admin-Bereich freigeschaltet werden.
+Ohne E-Mail-Versand zeigt der Admin-Bereich den Link für den Kunden zum manuellen Weitergeben an.
+
+## Gestaltung (CSS)
+
+Die Seite nutzt die übernommene `src/index.css`. Fehlende Tailwind-Klassen ergänzt
+`npm run css:extra` automatisch in `src/extra.css` (läuft auch bei `npm run build`).
+Nach Änderungen an Klassen im Entwicklungsmodus einmal `npm run css:extra` ausführen.
 
 ## E-Mail-Benachrichtigung
 
-Bei jeder neuen Angebots- oder Kontaktanfrage geht eine E-Mail an `NOTIFY_TO`.
-Wer auf diese E-Mail antwortet, schreibt direkt an die anfragende Person.
+E-Mails gehen an das Team (`NOTIFY_TO`: neue Anfragen, Registrierungen, Erstgespräche), an passende
+Autor:innen (neue Aufträge, Freischaltung, Ergebnis) und an Kund:innen (Autor:in prüfen, Entscheidung).
+Antworten auf Team-Mails zu Anfragen gehen direkt an die anfragende Person.
 Dafür in `.env` die SMTP-Zugangsdaten Ihres E-Mail-Anbieters eintragen und das Backend neu starten:
 
 | Variable    | Beispiel                     |
@@ -84,7 +109,7 @@ Dafür in `.env` die SMTP-Zugangsdaten Ihres E-Mail-Anbieters eintragen und das 
 | `NOTIFY_TO` | `team@silent-script.com`     |
 | `SITE_URL`  | `https://www.silent-script.com` |
 
-Ohne `SMTP_HOST` und `NOTIFY_TO` werden keine E-Mails versendet. Die Anfragen landen trotzdem im Dashboard.
+Ohne `SMTP_HOST` werden keine E-Mails versendet. Alles funktioniert trotzdem über Portal und Admin-Bereich.
 Fällt der Mailserver aus, wird die Anfrage trotzdem gespeichert. Der Fehler steht dann im Backend-Log.
 
 ## Daten
