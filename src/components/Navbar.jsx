@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLang } from '../i18n/LanguageContext';
 import { Menu, X, Languages } from 'lucide-react';
 import { url } from '../config';
+import ghostLogo from '../assets/brand/ghost-dark.png';
 
 const Navbar = () => {
   const { t, toggle, lang } = useLang();
@@ -33,6 +34,7 @@ const Navbar = () => {
     <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-500 ${scrolled ? 'bg-[#F7F3ED]/95 backdrop-blur border-b border-[#1A1A1A]/10' : 'bg-transparent'}`}>
       <div className="max-w-[1400px] mx-auto px-6 md:px-12 h-20 flex items-center justify-between">
         <a href="#top" onClick={(e) => scrollTo(e, '#top')} className="flex items-center gap-2">
+          <img src={ghostLogo} alt="" aria-hidden="true" className="h-9" style={{ width: "auto" }} />
           <span className="font-serif text-2xl tracking-tight text-[#14110F]">Silent Script<span className="text-[#C1613E]">.</span></span>
         </a>
         <nav className="hidden lg:flex items-center gap-8">

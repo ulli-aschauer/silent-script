@@ -3,9 +3,10 @@ import { useLang } from '../i18n/LanguageContext';
 import SectionKicker from './SectionKicker';
 import { images } from '../data/mock';
 import { Feather, BookOpen, Compass } from 'lucide-react';
+import ownerLogo from '../assets/brand/ph-dark.png';
 
 const About = () => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   return (
     <section id="about" className="py-24 md:py-32 bg-[#F7F3ED]">
       <div className="max-w-[1400px] mx-auto px-6 md:px-12">
@@ -38,6 +39,16 @@ const About = () => {
                 <p className="text-[#14110F]/70 leading-relaxed" style={{ paddingLeft: '3.25rem' }}>{p}</p>
               </div>
             ))}
+            {/* Signatur des Inhabers */}
+            <div className="border-t border-[#14110F]/10 flex items-center gap-6" style={{ marginLeft: "3.25rem", paddingTop: "2rem" }}>
+              <img src={ownerLogo} alt={lang === 'de' ? 'Logo des Inhabers' : 'Owner logo'} style={{ height: "6rem", width: "auto" }} />
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-[#C1613E] mb-1">{lang === 'de' ? 'Inhaber' : 'Owner'}</div>
+                <div className="font-serif text-lg italic text-[#14110F]/80">
+                  {lang === 'de' ? 'Persönlich verantwortet. Leise umgesetzt.' : 'Personally accountable. Quietly delivered.'}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
