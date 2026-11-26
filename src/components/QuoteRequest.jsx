@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useLang } from '../i18n/LanguageContext';
 import SectionKicker from './SectionKicker';
 import { Send, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { DEMO, DEMO_TEXT } from '../config';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -33,6 +34,7 @@ const QuoteRequest = ({ prefill }) => {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (DEMO) { setState('demo'); return; }
     setState('sending');
     try {
       await axios.post(`${API}/quotes`, {
@@ -94,6 +96,7 @@ const QuoteRequest = ({ prefill }) => {
                     {state === 'sending' ? L.sending : L.send}
                   </button>
                   {state === 'err' && <div className="text-sm text-red-700">{L.err}</div>}
+                  {state === 'demo' && <div className="text-sm text-[#C1613E] max-w-sm">{DEMO_TEXT}</div>}
                 </div>
               </form>
             )}

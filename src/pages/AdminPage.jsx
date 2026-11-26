@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Lock, LogOut, Trash2, Plus, RefreshCw, FileText, Users as UsersIcon, Briefcase, Mail } from 'lucide-react';
+import { DEMO, DEMO_TEXT, url } from '../config';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const TOKEN_KEY = 'ss_admin_token';
@@ -13,6 +14,7 @@ const Login = ({ onLogin }) => {
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
+    if (DEMO) { setErr(DEMO_TEXT); return; }
     setBusy(true); setErr('');
     try {
       const { data } = await axios.post(`${API}/auth/admin/login`, { password: pw });
@@ -193,7 +195,7 @@ const Dashboard = ({ token, onLogout }) => {
                 <div className="text-xs uppercase tracking-widest text-[#6B7A3E] mb-2">Zugang erstellt — bitte diese Daten sicher an den Autor weitergeben</div>
                 <div className="font-serif text-lg text-[#14110F] mb-3">{lastCred.display_name}</div>
                 <div className="grid md:grid-cols-3 gap-3 text-sm">
-                  <div><span className="text-[#14110F]/50">Login-URL:</span> <a className="text-[#C1613E] underline" href="/autoren" target="_blank" rel="noreferrer">/autoren</a></div>
+                  <div><span className="text-[#14110F]/50">Login-URL:</span> <a className="text-[#C1613E] underline" href={url('/autoren')} target="_blank" rel="noreferrer">/autoren</a></div>
                   <div><span className="text-[#14110F]/50">Username:</span> <span className="font-mono">{lastCred.username}</span></div>
                   <div><span className="text-[#14110F]/50">Passwort:</span> <span className="font-mono">{lastCred.password}</span></div>
                 </div>

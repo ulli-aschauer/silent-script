@@ -6,6 +6,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react()],
+    // Unterpfad der Seite, z.B. /silent-script/ auf GitHub Pages. Standard: /
+    base: env.VITE_BASE || '/',
     resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
     // Original-Code nutzt CRA-Variable process.env.REACT_APP_BACKEND_URL
     define: {

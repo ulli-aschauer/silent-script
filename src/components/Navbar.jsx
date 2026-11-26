@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLang } from '../i18n/LanguageContext';
 import { Menu, X, Languages } from 'lucide-react';
+import { url } from '../config';
 
 const Navbar = () => {
   const { t, toggle, lang } = useLang();
@@ -43,7 +44,7 @@ const Navbar = () => {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <a href="/autoren" className="hidden md:inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-[#14110F]/70 hover:text-[#C1613E] transition-colors">
+          <a href={url('/autoren')} className="hidden md:inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-[#14110F]/70 hover:text-[#C1613E] transition-colors">
             <span className="w-1.5 h-1.5 rounded-full bg-[#6B7A3E] animate-pulse"></span>
             Autoren-Login
           </a>
@@ -62,7 +63,7 @@ const Navbar = () => {
             {links.map((l) => (
               <a key={l.href} href={l.href} onClick={(e) => scrollTo(e, l.href)} className="text-base text-[#14110F]">{l.label}</a>
             ))}
-            <a href="/autoren" className="text-base text-[#C1613E] flex items-center gap-2 pt-4 border-t border-[#14110F]/10">
+            <a href={url('/autoren')} className="text-base text-[#C1613E] flex items-center gap-2 pt-4 border-t border-[#14110F]/10">
               <span className="w-1.5 h-1.5 rounded-full bg-[#6B7A3E]"></span>
               Autoren-Login
             </a>

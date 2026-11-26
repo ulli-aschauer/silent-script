@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Lock, LogOut, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { DEMO, DEMO_TEXT } from '../config';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const TOKEN_KEY = 'ss_author_token';
@@ -12,6 +13,7 @@ const Login = ({ onLogin }) => {
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
+    if (DEMO) { setErr(DEMO_TEXT); return; }
     setBusy(true); setErr('');
     try {
       const { data } = await axios.post(`${API}/auth/author/login`, f);

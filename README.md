@@ -23,7 +23,21 @@ npm run build
 npm start        # Website + API auf http://localhost:8001
 ```
 
-## Online stellen (Render.com)
+## Testversion auf GitHub Pages (kostenlos, ohne Backend)
+
+Adresse: https://ulli-aschauer.github.io/silent-script/
+
+Bei jedem Push auf `main` baut GitHub die Seite im **Testmodus** und veröffentlicht sie
+(`.github/workflows/pages.yml`). Im Testmodus speichern Formulare und Logins nichts.
+Stattdessen erscheint: „Ist im Testzustand nicht sichtbar. Wird erst angezeigt, wenn die Seite Online ist.“
+
+Einmalig in GitHub einrichten: **Settings → Pages → Source: GitHub Actions**.
+
+Eigene Domain für die Testversion: In `pages.yml` `VITE_BASE` auf `/` setzen,
+dann unter **Settings → Pages → Custom domain** die Domain eintragen und beim Domain-Anbieter
+die angezeigten DNS-Einträge setzen.
+
+## Online stellen mit Backend (Render.com)
 
 Die Datei `render.yaml` beschreibt alles: Build, Start, Datenspeicher (1 GB) und Einstellungen.
 

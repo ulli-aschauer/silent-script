@@ -38,7 +38,7 @@ const Home = () => {
 function App() {
   return (
     <LanguageProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/admin" element={<AdminPage />} />
